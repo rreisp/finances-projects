@@ -1,6 +1,7 @@
 class YahooSummary:
   def __init__(self, title, qsp_price, previous_close, open, bid, ask, day_range, weeks52_range, volume, avg_volume,
                maket_cap, beta, pe_ratio, eps, earnings_date, forward_dividend, ex_dividend_date, y1_target_est, at):
+               
     self.title = title
     self.qsp_price = qsp_price
     self.previous_close = previous_close

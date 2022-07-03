@@ -1,30 +1,22 @@
+from hashlib import new
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import re
-
+from yahoofinancials import YahooFinancials
+from yahoofinancialsincomestatetement import YahooFinancialsIncomeStatement
 from yahoosummary import YahooSummary
 
 class YahooExtractor:
-  def __init__(self):
-    print()
-
   @staticmethod
   def summary(stock):
     # This is a standard user-agent of Chrome browser running on Windows 10 
     headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36' } 
-    
     url_pattern = 'https://finance.yahoo.com/quote/{}?p={}&.tsrc=fin-srch'
-
-    # Use requests to retrieve data from a given URL
     url = url_pattern.format(stock, stock)
-    print(url)
+    # Use requests to retrieve data from a given URL
     response = requests.get(url, headers=headers)
-
     # Parse the whole HTML page using BeautifulSoup
     soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Title of the parsed page
-    # print(soup.title)
 
     qsp_price = soup.find('fin-streamer', {"data-test" : "qsp-price"}).get_text()
     previous_close = soup.find('td', {"data-test" : "PREV_CLOSE-value"}).get_text()
@@ -43,11 +35,48 @@ class YahooExtractor:
     forward_dividend = soup.find('td', {"data-test" : "DIVIDEND_AND_YIELD-value"}).get_text()
     ex_dividend_date = soup.find('td', {"data-test" : "EX_DIVIDEND_DATE-value"}).get_text()
     y1_target_est = soup.find('td', {"data-test" : "ONE_YEAR_TARGET_PRICE-value"}).get_text()
-    #at = re.search(r'At close:\.(.*?)', soup.find('div', {"id" : "quote-market-notice"}).get_text()).group(1)
+
     search_at = re.search(r'At close:  (.*) (.*)', soup.find('div', {"id" : "quote-market-notice"}).get_text())
     at = search_at.group(1) + ' '+ search_at.group(2)
     
     yahoo_data = YahooSummary(stock, qsp_price, previous_close, open, bid, ask, day_range, weeks52_range, 
                           volume, avg_volume, market_cap, beta, pe_ratio, eps, earnings_date, 
                           forward_dividend, ex_dividend_date, y1_target_est, at)
-    return yahoo_data 
+    return yahoo_data
+
+  @staticmethod
+  def financials(stock):
+    headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36' } 
+    url_pattern = 'https://finance.yahoo.com/quote/{}/financials?p={}'
+    url = url_pattern.format(stock, stock)
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+
+    # rows = soup.div['D(tbr) fi-row Bgc($hoverBgColor):h']
+
+    annual_income_statements_title_rows = soup.find_all(class_ = 'D(tbr) C($primaryColor)')
+    # print(len(annual_income_statements_title_rows))
+    annual_income_statements_title_cols = annual_income_statements_title_rows[0].find_all('span')
+    annual_income_statements_title_cols = [x.text for x in annual_income_statements_title_cols][1:6]
+
+    annual_income_statements_rows = soup.find_all(class_ = 'D(tbr) fi-row Bgc($hoverBgColor):h')
+    #rows = soup.find_all(class_ = 'Ta(c) Py(6px) Bxz(bb) BdB Bdc($seperatorColor) Miw(120px) Miw(100px)--pnclg Bgc($lv1BgColor) fi-row:h_Bgc($hoverBgColor) D(tbc)')
+
+    annual_income_statement = []
+
+    for row in annual_income_statements_rows:
+      # print(row.find_all('span'))
+      row = [x.text for x in row][1:6]
+      annual_income_statement.append(row)
+
+    annual_income_statement_obj = YahooFinancialsIncomeStatement(annual_income_statements_title_cols, 
+          annual_income_statement[0], annual_income_statement[1], annual_income_statement[2], annual_income_statement[3], annual_income_statement[4], 
+          annual_income_statement[5], annual_income_statement[6], annual_income_statement[7], annual_income_statement[8],annual_income_statement[9],
+          annual_income_statement[10], annual_income_statement[11], annual_income_statement[12], annual_income_statement[13],annual_income_statement[14],
+          annual_income_statement[15], annual_income_statement[16], annual_income_statement[17], annual_income_statement[18],annual_income_statement[19],
+          annual_income_statement[20], annual_income_statement[21], annual_income_statement[22], annual_income_statement[23], annual_income_statement[24], 
+          annual_income_statement[25], annual_income_statement[26], annual_income_statement[27], annual_income_statement[28],annual_income_statement[29])
+    
+    financials = YahooFinancials(annual_income_statement_obj)
+    return financials
